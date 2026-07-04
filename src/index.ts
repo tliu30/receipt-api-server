@@ -99,6 +99,10 @@ function combinedAuthMiddleware(req, res, next) {
   return csrf.express()(req, res, next)
 }
 
+function passthroughRawBody(req, res, buf) {
+  req.rawBody = buf.toString('utf8');
+}
+
 const port = 3000
 
 const serverMetadata: oauthClient.ServerMetadata = {
@@ -240,7 +244,7 @@ app.get('/status',
 // Deprecated. Prefer using /text.
 app.post(
   "/textblocks",
-  express.json(),
+  express.json({ verify: passthroughRawBody }),
   express.urlencoded(),
   combinedAuthMiddleware,
   async (req: Request, res: Response) => {
@@ -287,6 +291,7 @@ app.post(
   }
 );
 
+
 /**
  * Print text to the printer.
  * @route /text
@@ -307,7 +312,7 @@ app.post(
  */
 app.post(
   "/text",
-  express.json(),
+  express.json({ verify: passthroughRawBody }),
   express.urlencoded(),
   combinedAuthMiddleware,
   isPrintableAscii('text'),
@@ -405,6 +410,7 @@ app.post('/image',
       'image/x-ms-bmp',
     ],
     limit: '1mb',
+    verify: passthroughRawBody,
   }),
   combinedAuthMiddleware,
   async (req: Request, res: Response) => {
@@ -439,7 +445,7 @@ app.post('/image',
  * @type application/octet-stream
  */
 app.post('/escpos',
-  express.raw({ type: 'application/octet-stream', limit: '1mb' }),
+  express.raw({ type: 'application/octet-stream', limit: '1mb', verify: passthroughRawBody }),
   combinedAuthMiddleware,
   async (req: Request, res: Response) => {
   fs.writeFile(env.outFile, req.body, err => {
