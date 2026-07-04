@@ -8,6 +8,7 @@
     "prod": "npx tsx --env-file .env src/index.ts",
     "typecheck": "npx tsc --noEmit",
     "generate": "node scripts/generate_docs.js",
+    "keygen": "node scripts/keygen.js",
     "test": ""
   },
   "keywords": [],

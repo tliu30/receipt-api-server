@@ -1,144 +1,96 @@
-<h1>Receipt Printer API Documentation</h1>
-<div>
-  <h2>GET /login</h2>
-
-  <p>Authenticate with Receipt Printer API via Recurse Center OAuth.</p>
-  <p>Once the user has completed the OAuth flow, their browser receives two
-    cookies from Receipt Printer API: a session cookie and a CSRF token cookie.
-    The session cookie can only be seen by Receipt Printer API, while the CSRF
-    token cookie can be seen by any web app served from a
-    <code>*.recurse.com</code>
-    subdomain.</p>
-  <p>To make API calls to Receipt Printer API from your web app, you must do the
-    following:</p>
-  <ol>
-    <li>Your web app must be served from a <code>*.recurse.com</code> subdomain.
-      This is so
-      your web app can read the CSRF token cookie, which has
-      <code>Domain=.recurse.com</code>.</li>
-    <li>Before making any API calls to Receipt Printer API, you need to verify
-      that the user is authenticated with Receipt Printer API. To do so, simply
-      check for the presence of a cookie called <code>receipt_csrf</code>. If
-      the cookie is
-      not there, you should either redirect or provide a link to this
-      endpoint.</li>
-    <li>Once the user has authenticated with Receipt Printer API, your web app
-      will be able to see a cookie with key <code>receipt_csrf</code>. The value
-      of this
-      cookie needs to be included as a header <code>X-CSRF-Token</code> or as a
-      hidden form
-      input named <code>_csrf</code> in any HTTP requests sent to Receipt
-      Printer API. This
-      serves as proof that the API calls are coming a <code>*.recurse.com</code>
-      subdomain.</li>
-    <li>If you are making the HTTP request in JS (e.g. <code>fetch()</code>),
-      make sure to
-      set the option <code>{ credentials: 'include' }</code>, which tells the
-      browser to also
-      send Receipt Printer API the user's session cookie. If you don't do this,
-      Receipt Printer API will not see a session cookie, and thus will be unable
-      to verify that the user making the request is a Recurser.</li>
-  </ol>
-
-  <p><strong>Parameters:</strong></p>
-  <ul>
-
-    <li><code>redirect_uri?: URL</code> - The URL to redirect back to after
-      authentication is complete. Must be a
-      <code>*.recurse.com</code> subdomain.</li>
-
-  </ul>
-
-</div>
-
-<div>
-  <h2>POST /text</h2>
-
-  <p>Print text to the printer.</p>
-
-  <p><strong>Accepted <code>Content-Type</code>:</strong></p>
-  <ul>
-
-    <li><code>application/json</code></li>
-
-    <li><code>application/x-www-form-urlencoded</code></li>
-
-  </ul>
-
-  <p><strong>Parameters:</strong></p>
-  <ul>
-
-    <li><code>text: string</code> - May only contain printable ASCII
-      characters.</li>
-
-    <li><code>spacing?: number</code> - Space between characters (0-255).
-      Default 0.</li>
-
-    <li><code>scaleWidth?: number</code> - Scale text horizontally (1-8).
-      Default 1.</li>
-
-    <li><code>scaleHeight?: number</code> - Scale text vertically (1-8). Default
-      1.</li>
-
-    <li><code>underline?: boolean</code> - </li>
-
-    <li><code>bold?: boolean</code> - </li>
-
-    <li><code>font?: string</code> - &quot;a&quot; or &quot;b&quot;. Default
-      &quot;a&quot;.</li>
-
-    <li><code>invert?: boolean</code> - Invert colors (white on black).</li>
-
-    <li><code>coda?: string</code> - Action to perform at the end.
-      Can be &quot;cut&quot;, &quot;newline&quot;, &quot;space&quot;, or
-      &quot;none&quot;.
-      Default: &quot;cut&quot;</li>
-
-  </ul>
-
-</div>
-
-<div>
-  <h2>POST /image</h2>
-
-  <p>Print an image. See supported Content-Type for supported image formats. For
-    .pbm, use application/octet-stream. For all other formats, if the image is
-    wider than 512px across, it will be shrunk down to be 512px wide, preserving
-    aspect ratio. If it's not black and white, it will be converted to a black
-    and white dithered image using a 4x4 Bayer matrix.</p>
-
-  <p><strong>Accepted <code>Content-Type</code>:</strong></p>
-  <ul>
-
-    <li><code>image/tiff</code></li>
-
-    <li><code>image/jpeg</code></li>
-
-    <li><code>image/png</code></li>
-
-    <li><code>image/gif</code></li>
-
-    <li><code>image/bmp</code></li>
-
-    <li><code>image/x-ms-bmp</code></li>
-
-    <li><code>application/octet-stream</code></li>
-
-  </ul>
-
-</div>
-
-<div>
-  <h2>POST /escpos</h2>
-
-  <p>Send raw ESC/POS bytes to the printer. Pass the ESC/POS bytes directly in
-    the request body.</p>
-
-  <p><strong>Accepted <code>Content-Type</code>:</strong></p>
-  <ul>
-
-    <li><code>application/octet-stream</code></li>
-
-  </ul>
-
-</div>
+<h1>Receipt Printer API: App developer guide</h1>
+<p><a href="..">Home</a></p>
+<p><a href="api">Available routes</a></p>
+<p>If you want your app to be able to print on the receipt printer in the hub,
+we'll need to make sure that only Recursers can trigger prints. For this
+reason, Receipt Printer API only accepts authenticated requests. Read on to
+learn how to make authenticated requests from your app.</p>
+<h2>Recommended authentication method: OAuth + cookies</h2>
+<p>Here is how this works at a high level:</p>
+<ol>
+<li>User (a Recurser) visits your app in their browser.</li>
+<li>Your app has a button/link to authenticate to Receipt Printer API.</li>
+<li>User clicks the button. Some stuff happens, proving they are a Recurser.</li>
+<li>User returns to your app. Now your app is able to send authenticated HTTP
+requests to Receipt Printer API!</li>
+</ol>
+<p>Now the same steps, but with more detail:</p>
+<ol>
+<li><strong>User (a Recurser) visits your app in their browser.</strong> Your web app must be
+served from a <code>*.recurse.com</code> subdomain. This is so your app can read the CSRF
+token cookie created by Receipt Printer API, which has <code>Domain=.recurse.com</code>.</li>
+<li><strong>Your app has a button/link to authenticate to Receipt Printer API.</strong> It
+should link to <code>https://receipt.recurse.com/login</code>, with an optional URL
+parameter <code>?redirect_uri=...</code> so Receipt Printer API can redirect back to your
+app when the OAuth flow is complete. You can skip this step if you see there is
+already a cookie with key <code>receipt_csrf</code>.</li>
+<li><strong>User clicks the button. Some stuff happens, proving they are a Recurser.</strong>
+This is where the OAuth flow happens. Basically, they're redirected to the
+Recurse Center website to log in and grant basic permissions to Receipt Printer
+API, and at the end they're redirected back to Receipt Printer API (or your app
+if you used <code>?redirect_uri=...</code> in the previous step).</li>
+<li><strong>User returns to your app. Now your app is able to send authenticated HTTP
+requests to Receipt Printer API!</strong> At this point your app should be able to see
+a cookie with key <code>receipt_csrf</code>, which was created by Receipt Printer API.
+The value of this cookie needs to be included as a header <code>X-CSRF-Token</code> or as
+a hidden form input named <code>_csrf</code> in any HTTP requests sent to Receipt Printer
+API. This serves as proof that the API calls are coming from a <code>*.recurse.com</code>
+subdomain. If you are making the HTTP request in JS (e.g. <code>fetch()</code>), make sure
+to set the option <code>{ credentials: 'include' }</code>, which tells the browser to also
+send Receipt Printer API the user's session cookie. If you don't do this,
+Receipt Printer API will not see a session cookie, and thus will be unable to
+verify that the user making the request is a Recurser.</li>
+</ol>
+<p>For more information, refer to the documentation for the
+<a href="api">GET <code>/login</code> endpoint</a>.</p>
+<h2>Alternative authentication method: register your headless service</h2>
+<p>OAuth-based authentication may not be a good fit for your use case. If you are
+developing a headless service (i.e. your app is not running within a Recurser's
+web browser) like a Zulip bot or a cron job, you can't really kick off an OAuth
+flow or make use of cookies. In situations like this, you can register your
+service with Receipt Printer API by making a pull request.</p>
+<p>Note that this method is not preferred, because it fundamentally cannot
+guarantee that the person or thing that is triggering prints is a Recurser,
+which could lead to excessive printing. By using this method, you assume
+responsibility for anything printed using your registered key.</p>
+<p>To use this authentication method, follow these steps:</p>
+<ol>
+<li>Finish reading this entire section. Post in <a href="https://recurse.zulipchat.com/#narrow/channel/398504-397-Bridge/topic/receipt.20printer/with/597698313">#397 Bridge &gt; receipt
+printer</a>
+on Zulip if you have questions.</li>
+<li>Generate a public and private key pair using
+<a href="https://ed25519.cr.yp.to/">Ed25519</a>. A Node script is provided with the
+<a href="https://github.com/aycyang/receipt-api-server">server source code</a> which you
+can run with <code>npm run keygen</code>. Keep the private key a secret, e.g.  don't check
+it into version control.</li>
+<li>Submit a pull request to <a href="https://github.com/aycyang/receipt-api-server">Receipt Printer
+API</a> checking in the <em>public</em>
+key you generated. After merging, be sure to redeploy Receipt Printer API.</li>
+<li>In your app, use the <em>private</em> key you generated to sign the request body
+and include the resulting signature, base64-encoded, in a header <code>Signature:</code>
+in your HTTP requests. You can use the following test case to make sure your
+signing procedure is correct:
+<ul>
+<li>Given private key:<pre><code>-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEIOsKg+rzg/nFtuwQe/4zseKwSwFB/8Kr3OIRmyD/Xrmr
+-----END PRIVATE KEY-----
+</code></pre>
+</li>
+<li>and request body (whitespace must match):<pre><code>{&quot;text&quot;:&quot;how now brown cow&quot;}
+</code></pre>
+</li>
+<li>You should get the following signature (base64-encoded):<pre><code>9ZBNYMz8Q8OQuajaGI76q5LZy/I41J52livkgA3H0opPKF1VtE5tGrAnDW82rf8W9G67cpto1MW1PZa59CPOCw==
+</code></pre>
+</li>
+</ul>
+</li>
+</ol>
+<p>If you want to use this method for authentication, please make sure your
+application (1) will not trigger excessive prints to the receipt printer, and
+to this end, (2) does not allow non-Recursers to trigger prints (i.e. let's
+not let random people on the Internet print whatever they want). If these
+conditions are not satisfied, your pull request may be denied. At the end of
+the day, we want to enable all Recursers, whether they are in-person or
+remote, to both use and write software for the receipt printer. This comes
+with the risk of becoming a nuisance in the hub through excessive printing
+– hence the aforementioned security policy.</p>

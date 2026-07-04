@@ -1,0 +1,145 @@
+<h1>Receipt Printer API: Available routes</h1>
+<p><a href="..">App developer guide</a></p>
+<div>
+  <h2>GET /login</h2>
+
+  <p>Authenticate with Receipt Printer API via Recurse Center OAuth.</p>
+  <p>Once the user has completed the OAuth flow, their browser receives two
+    cookies from Receipt Printer API: a session cookie and a CSRF token cookie.
+    The session cookie can only be seen by Receipt Printer API, while the CSRF
+    token cookie can be seen by any web app served from a
+    <code>*.recurse.com</code>
+    subdomain.</p>
+  <p>To make API calls to Receipt Printer API from your web app, you must do the
+    following:</p>
+  <ol>
+    <li>Your web app must be served from a <code>*.recurse.com</code> subdomain.
+      This is so
+      your web app can read the CSRF token cookie, which has
+      <code>Domain=.recurse.com</code>.</li>
+    <li>Before making any API calls to Receipt Printer API, you need to verify
+      that the user is authenticated with Receipt Printer API. To do so, simply
+      check for the presence of a cookie called <code>receipt_csrf</code>. If
+      the cookie is
+      not there, you should either redirect or provide a link to this
+      endpoint.</li>
+    <li>Once the user has authenticated with Receipt Printer API, your web app
+      will be able to see a cookie with key <code>receipt_csrf</code>. The value
+      of this
+      cookie needs to be included as a header <code>X-CSRF-Token</code> or as a
+      hidden form
+      input named <code>_csrf</code> in any HTTP requests sent to Receipt
+      Printer API. This
+      serves as proof that the API calls are coming a <code>*.recurse.com</code>
+      subdomain.</li>
+    <li>If you are making the HTTP request in JS (e.g. <code>fetch()</code>),
+      make sure to
+      set the option <code>{ credentials: 'include' }</code>, which tells the
+      browser to also
+      send Receipt Printer API the user's session cookie. If you don't do this,
+      Receipt Printer API will not see a session cookie, and thus will be unable
+      to verify that the user making the request is a Recurser.</li>
+  </ol>
+
+  <p><strong>Parameters:</strong></p>
+  <ul>
+
+    <li><code>redirect_uri?: URL</code> - The URL to redirect back to after
+      authentication is complete. Must be a
+      <code>*.recurse.com</code> subdomain.</li>
+
+  </ul>
+
+</div>
+
+<div>
+  <h2>POST /text</h2>
+
+  <p>Print text to the printer.</p>
+
+  <p><strong>Accepted <code>Content-Type</code>:</strong></p>
+  <ul>
+
+    <li><code>application/json</code></li>
+
+    <li><code>application/x-www-form-urlencoded</code></li>
+
+  </ul>
+
+  <p><strong>Parameters:</strong></p>
+  <ul>
+
+    <li><code>text: string</code> - May only contain printable ASCII
+      characters.</li>
+
+    <li><code>spacing?: number</code> - Space between characters (0-255).
+      Default 0.</li>
+
+    <li><code>scaleWidth?: number</code> - Scale text horizontally (1-8).
+      Default 1.</li>
+
+    <li><code>scaleHeight?: number</code> - Scale text vertically (1-8). Default
+      1.</li>
+
+    <li><code>underline?: boolean</code> - </li>
+
+    <li><code>bold?: boolean</code> - </li>
+
+    <li><code>font?: string</code> - &quot;a&quot; or &quot;b&quot;. Default
+      &quot;a&quot;.</li>
+
+    <li><code>invert?: boolean</code> - Invert colors (white on black).</li>
+
+    <li><code>coda?: string</code> - Action to perform at the end.
+      Can be &quot;cut&quot;, &quot;newline&quot;, &quot;space&quot;, or
+      &quot;none&quot;.
+      Default: &quot;cut&quot;</li>
+
+  </ul>
+
+</div>
+
+<div>
+  <h2>POST /image</h2>
+
+  <p>Print an image. See supported Content-Type for supported image formats. For
+    .pbm, use application/octet-stream. For all other formats, if the image is
+    wider than 512px across, it will be shrunk down to be 512px wide, preserving
+    aspect ratio. If it's not black and white, it will be converted to a black
+    and white dithered image using a 4x4 Bayer matrix.</p>
+
+  <p><strong>Accepted <code>Content-Type</code>:</strong></p>
+  <ul>
+
+    <li><code>image/tiff</code></li>
+
+    <li><code>image/jpeg</code></li>
+
+    <li><code>image/png</code></li>
+
+    <li><code>image/gif</code></li>
+
+    <li><code>image/bmp</code></li>
+
+    <li><code>image/x-ms-bmp</code></li>
+
+    <li><code>application/octet-stream</code></li>
+
+  </ul>
+
+</div>
+
+<div>
+  <h2>POST /escpos</h2>
+
+  <p>Send raw ESC/POS bytes to the printer. Pass the ESC/POS bytes directly in
+    the request body.</p>
+
+  <p><strong>Accepted <code>Content-Type</code>:</strong></p>
+  <ul>
+
+    <li><code>application/octet-stream</code></li>
+
+  </ul>
+
+</div>
